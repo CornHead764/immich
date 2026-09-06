@@ -42,7 +42,13 @@ with open(path, "w") as f:
 PY
 
 git add "$PLIST"
-git commit -m "Release ipa-v$VERSION"
+# Re-cutting a version that is already stamped (a rebuild against new upstream
+# commits, say) leaves nothing to commit, so tag what is already here.
+if git diff --cached --quiet; then
+  echo "Info.plist already at $VERSION — tagging the current commit."
+else
+  git commit -m "Release ipa-v$VERSION"
+fi
 git tag "ipa-v$VERSION"
 
 for remote in "${REMOTES[@]}"; do
