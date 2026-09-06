@@ -27,6 +27,13 @@ abstract class BackgroundWorkerFgHostApi {
   void configure(BackgroundWorkerSettings settings);
 
   void disable();
+
+  // iOS only: Asks the OS for extra runtime so pending uploads can be handed to the
+  // background URLSession before the app is suspended
+  void beginBackgroundTask();
+
+  // iOS only: Releases the runtime acquired by beginBackgroundTask
+  void endBackgroundTask();
 }
 
 @HostApi()

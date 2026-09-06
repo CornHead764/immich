@@ -55,6 +55,10 @@ class BackgroundWorkerFgService {
   }
 
   Future<void> disable() => _foregroundHostApi.disable();
+
+  Future<void> beginBackgroundTask() => _foregroundHostApi.beginBackgroundTask();
+
+  Future<void> endBackgroundTask() => _foregroundHostApi.endBackgroundTask();
 }
 
 class BackgroundWorkerBgService extends BackgroundWorkerFlutterApi {

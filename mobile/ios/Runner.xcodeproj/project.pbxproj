@@ -18,6 +18,7 @@
 		A01DD69B2F7F43B40049AB63 /* ImageRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = A01DD6982F7F43B40049AB63 /* ImageRequest.swift */; };
 		B21E34AA2E5AFD2B0031FDB9 /* BackgroundWorkerApiImpl.swift in Sources */ = {isa = PBXBuildFile; fileRef = B21E34A92E5AFD210031FDB9 /* BackgroundWorkerApiImpl.swift */; };
 		B21E34AC2E5B09190031FDB9 /* BackgroundWorker.swift in Sources */ = {isa = PBXBuildFile; fileRef = B21E34AB2E5B09100031FDB9 /* BackgroundWorker.swift */; };
+		B21E34AE2E5B09190031FDB9 /* BackupIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = B21E34AD2E5B09100031FDB9 /* BackupIntent.swift */; };
 		B25D377A2E72CA15008B6CA7 /* Connectivity.g.swift in Sources */ = {isa = PBXBuildFile; fileRef = B25D37782E72CA15008B6CA7 /* Connectivity.g.swift */; };
 		B25D377C2E72CA26008B6CA7 /* ConnectivityApiImpl.swift in Sources */ = {isa = PBXBuildFile; fileRef = B25D377B2E72CA20008B6CA7 /* ConnectivityApiImpl.swift */; };
 		B2BE315F2E5E5229006EEF88 /* BackgroundWorker.g.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2BE315E2E5E5229006EEF88 /* BackgroundWorker.g.swift */; };
@@ -109,6 +110,7 @@
 		A01DD6982F7F43B40049AB63 /* ImageRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageRequest.swift; sourceTree = "<group>"; };
 		B21E34A92E5AFD210031FDB9 /* BackgroundWorkerApiImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundWorkerApiImpl.swift; sourceTree = "<group>"; };
 		B21E34AB2E5B09100031FDB9 /* BackgroundWorker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundWorker.swift; sourceTree = "<group>"; };
+		B21E34AD2E5B09100031FDB9 /* BackupIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupIntent.swift; sourceTree = "<group>"; };
 		B25D37782E72CA15008B6CA7 /* Connectivity.g.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Connectivity.g.swift; sourceTree = "<group>"; };
 		B25D377B2E72CA20008B6CA7 /* ConnectivityApiImpl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectivityApiImpl.swift; sourceTree = "<group>"; };
 		B2BE315E2E5E5229006EEF88 /* BackgroundWorker.g.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundWorker.g.swift; sourceTree = "<group>"; };
@@ -315,6 +317,7 @@
 				B2BE315E2E5E5229006EEF88 /* BackgroundWorker.g.swift */,
 				B21E34AB2E5B09100031FDB9 /* BackgroundWorker.swift */,
 				B21E34A92E5AFD210031FDB9 /* BackgroundWorkerApiImpl.swift */,
+				B21E34AD2E5B09100031FDB9 /* BackupIntent.swift */,
 			);
 			path = Background;
 			sourceTree = "<group>";
@@ -620,6 +623,7 @@
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				A01DD69B2F7F43B40049AB63 /* ImageRequest.swift in Sources */,
 				B21E34AC2E5B09190031FDB9 /* BackgroundWorker.swift in Sources */,
+				B21E34AE2E5B09190031FDB9 /* BackupIntent.swift in Sources */,
 				FE5499F32F1197D8006016CB /* LocalImages.g.swift in Sources */,
 				FE5499F62F11980E006016CB /* LocalImagesImpl.swift in Sources */,
 				FE5499F42F1197D8006016CB /* RemoteImages.g.swift in Sources */,

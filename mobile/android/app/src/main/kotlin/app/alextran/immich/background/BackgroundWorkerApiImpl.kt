@@ -42,6 +42,14 @@ class BackgroundWorkerApiImpl(context: Context) : BackgroundWorkerFgHostApi {
     Log.i(TAG, "Cancelled background upload tasks")
   }
 
+  override fun beginBackgroundTask() {
+    // iOS only
+  }
+
+  override fun endBackgroundTask() {
+    // iOS only
+  }
+
   companion object {
     private const val BACKGROUND_WORKER_NAME = "immich/BackgroundWorkerV1"
     private const val OBSERVER_WORKER_NAME = "immich/MediaObserverV1"

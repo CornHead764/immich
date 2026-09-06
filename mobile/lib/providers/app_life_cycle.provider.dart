@@ -209,14 +209,40 @@ class AppLifeCycleNotifier extends StateNotifier<AppLifeCycleEnum> {
     }
   }
 
-  Future<void> _performPause() {
+  Future<void> _performPause() async {
     if (_ref.read(authProvider).isAuthenticated) {
       _ref.read(backupProvider.notifier).stopForegroundBackup(reason: "the app being sent to the background");
 
       _ref.read(websocketProvider.notifier).disconnect();
+
+      await _handOffBackupToOS();
     }
 
     return LogService.I.flush().catchError((_) {});
+  }
+
+  /// iOS suspends the app moments after it is backgrounded, so hand the remaining candidates
+  /// to the background URLSession while there is still runtime. The OS keeps uploading them
+  /// after suspension, instead of the queue sitting idle until BGTaskScheduler decides to fire.
+  Future<void> _handOffBackupToOS() async {
+    if (!CurrentPlatform.isIOS || !_ref.read(settingsProvider).appConfig.backup.enabled) {
+      return;
+    }
+
+    final userId = Store.tryGet(StoreKey.currentUser)?.id;
+    if (userId == null) {
+      return;
+    }
+
+    final backgroundWorker = _ref.read(backgroundWorkerFgServiceProvider);
+    await backgroundWorker.beginBackgroundTask();
+    try {
+      await _ref.read(backupProvider.notifier).startBackupWithURLSession(userId);
+    } catch (error, stackTrace) {
+      _log.warning("Failed to hand off backup to the background URLSession", error, stackTrace);
+    } finally {
+      await backgroundWorker.endBackgroundTask();
+    }
   }
 
   Future<void> handleAppDetached() async {

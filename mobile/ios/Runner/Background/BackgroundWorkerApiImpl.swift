@@ -1,4 +1,5 @@
 import BackgroundTasks
+import UIKit
 
 class BackgroundWorkerApiImpl: BackgroundWorkerFgHostApi {
 
@@ -21,11 +22,45 @@ class BackgroundWorkerApiImpl: BackgroundWorkerFgHostApi {
     BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: BackgroundWorkerApiImpl.processingTaskID);
     print("BackgroundWorkerApiImpl:disableUploadWorker Disabled background workers")
   }
+
+  private var backgroundTaskId: UIBackgroundTaskIdentifier = .invalid
+
+  func beginBackgroundTask() throws {
+    try endBackgroundTask()
+    backgroundTaskId = UIApplication.shared.beginBackgroundTask(withName: "immich.uploadHandoff") { [weak self] in
+      try? self?.endBackgroundTask()
+    }
+  }
+
+  func endBackgroundTask() throws {
+    guard backgroundTaskId != .invalid else { return }
+    UIApplication.shared.endBackgroundTask(backgroundTaskId)
+    backgroundTaskId = .invalid
+  }
   
   private static let taskIDs = Bundle.main.object(forInfoDictionaryKey: "BGTaskSchedulerPermittedIdentifiers") as! [String]
   private static let refreshTaskID = taskIDs.first { $0.hasSuffix(".refreshUpload") }!
   private static let processingTaskID = taskIDs.first { $0.hasSuffix(".processingUpload") }!
   private static let taskSemaphore = DispatchSemaphore(value: 1)
+  private static var intentWorker: BackgroundWorker?
+
+  /// Runs the upload worker on demand rather than on the OS schedule, for the Shortcuts
+  /// action in BackupIntent. Skipped while the app is in the foreground, where the UI
+  /// engine already owns the database.
+  @MainActor
+  public static func runUploadWorker() async {
+    guard UIApplication.shared.applicationState != .active,
+          taskSemaphore.wait(timeout: .now()) == .success else { return }
+    defer { taskSemaphore.signal() }
+
+    await withCheckedContinuation { continuation in
+      intentWorker = BackgroundWorker(taskType: .refresh, maxSeconds: 25) { _ in
+        intentWorker = nil
+        continuation.resume()
+      }
+      intentWorker?.run()
+    }
+  }
 
   public static func registerBackgroundWorkers() {
       BGTaskScheduler.shared.register(

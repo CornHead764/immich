@@ -77,6 +77,19 @@ title="Android backup options"
 </div>
 
 - iOS automatically manages background tasks; the app cannot control when the background upload task will run. The more frequently you open the app, the more often background tasks will run.
+- When you leave the app, Immich hands any remaining uploads over to iOS, which continues them while the app is suspended.
+
+#### Uploading with a Shortcuts automation
+
+Because iOS decides on its own when to run background tasks, a photo you take now may not be uploaded for hours. For a predictable trigger, Immich exposes a **Back up now** action to the Shortcuts app, which iOS runs in the background without opening Immich.
+
+The most useful automation is to run it whenever you finish taking photos:
+
+1. Open the **Shortcuts** app and go to **Automation** > **+** > **App**.
+2. Choose the **Camera** app, select **Is Closed**, and pick **Run Immediately**.
+3. Add the **Back up now** action from Immich, then tap **Done**.
+
+Closing the Camera app now uploads what you just shot, with nothing visible happening on screen. The transfer itself is handed to iOS and carries on after the action finishes, so large videos are not cut short.
 
 #### iCloud Backup
 
