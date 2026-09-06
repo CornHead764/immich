@@ -2,13 +2,18 @@ name: Build IPA
 
 # Fork-only workflow: builds an unsigned IPA for sideloading through SideStore.
 #
-# Tags only, in their own `ipa-v*` namespace rather than `v*`. Upstream's
-# cli.yml and docker.yml fire on `release: published`, so keeping this fork's
-# tags and releases in a separate namespace makes it obvious which releases are
-# ours — and mobile/scripts/release-ipa.sh pushes the branch and the tag at the
-# same commit, so a branch trigger would only build every release twice.
+# A push to the working branch builds and keeps the IPA as an artifact; only a
+# tag publishes a release. Releases are tagged in their own `ipa-v*` namespace
+# rather than `v*` because upstream's cli.yml and docker.yml fire on
+# `release: published`, and the separation makes it obvious which releases are
+# this fork's.
+#
+# release-ipa.sh pushes the branch and the tag at the same commit, so a release
+# does build twice. That is the price of being able to prove a change to this
+# workflow — or to the iOS code — without spending a version number on it.
 on:
   push:
+    branches: ['ios-background-upload']
     tags: ['ipa-v*']
   workflow_dispatch:
 
@@ -69,10 +74,20 @@ jobs:
         # is not usable here because it archives and exports, which requires a
         # signing identity.
         run: |
-          cd mobile/build/ios/iphoneos
-          mkdir -p Payload
-          mv Runner.app Payload/
-          zip -qry "$GITHUB_WORKSPACE/Immich.ipa" Payload
+          set -euo pipefail
+          BUILD=mobile/build/ios/iphoneos
+          # The Release configuration sets PRODUCT_NAME = Immich, so the bundle
+          # is not named after the Runner target that builds it. Found rather
+          # than spelled out, and loud about what is actually there if it moves.
+          APP=$(find "$BUILD" -maxdepth 1 -name '*.app' | head -1)
+          if [ -z "$APP" ]; then
+            echo "error: no .app in $BUILD" >&2
+            ls -la "$BUILD" >&2 || true
+            exit 1
+          fi
+          mkdir -p "$BUILD/Payload"
+          mv "$APP" "$BUILD/Payload/"
+          (cd "$BUILD" && zip -qry "$GITHUB_WORKSPACE/Immich.ipa" Payload)
           ls -la "$GITHUB_WORKSPACE/Immich.ipa"
 
       - name: Upload artifact
