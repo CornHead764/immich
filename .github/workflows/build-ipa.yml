@@ -30,9 +30,16 @@ jobs:
     # Flutter drives xcodebuild for iOS, so this has to run on macOS. The xtool
     # runner the other apps in this store build on handles SwiftPM packages
     # only and cannot build a Flutter app.
-    runs-on: macos-15
+    #
+    # The runner image and the Xcode below are the pair upstream's own
+    # build-mobile.yml uses. An older Xcode is not worth trying: the project is
+    # only ever built against this one.
+    runs-on: macos-26
 
     steps:
+      - name: Select Xcode 26
+        run: sudo xcode-select -s /Applications/Xcode_26.2.app/Contents/Developer
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
