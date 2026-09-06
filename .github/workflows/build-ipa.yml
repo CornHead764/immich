@@ -1,0 +1,110 @@
+name: Build IPA
+
+# Fork-only workflow: builds an unsigned IPA for sideloading through SideStore.
+#
+# Tags only, in their own `ipa-v*` namespace rather than `v*`. Upstream's
+# cli.yml and docker.yml fire on `release: published`, so keeping this fork's
+# tags and releases in a separate namespace makes it obvious which releases are
+# ours — and mobile/scripts/release-ipa.sh pushes the branch and the tag at the
+# same commit, so a branch trigger would only build every release twice.
+on:
+  push:
+    tags: ['ipa-v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # mise's monorepo support — `monorepo_root` in the root mise.toml and the
+  # `//mobile:task` syntax below — is behind the experimental flag.
+  MISE_EXPERIMENTAL: 1
+
+jobs:
+  build:
+    name: Build unsigned IPA
+    # Flutter drives xcodebuild for iOS, so this has to run on macOS. The xtool
+    # runner the other apps in this store build on handles SwiftPM packages
+    # only and cannot build a Flutter app.
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup mise
+        uses: jdx/mise-action@v2
+        with:
+          working_directory: ./mobile
+
+      - name: Install dependencies
+        run: mise //mobile:install:ci
+
+      - name: Perform codegen
+        run: mise //mobile:codegen
+
+      - name: Build unsigned app
+        working-directory: ./mobile
+        # SideStore signs the app with the user's own certificate on install, so
+        # nothing is signed here. If xcodebuild starts demanding provisioning
+        # profiles for the app or its extensions, blank IMMICH_TEAM_ID by
+        # writing ios/Signing.local.xcconfig before this step.
+        run: flutter build ios --release --no-codesign
+
+      - name: Package IPA
+        # An IPA is just a zip with the .app under Payload/. `flutter build ipa`
+        # is not usable here because it archives and exports, which requires a
+        # signing identity.
+        run: |
+          cd mobile/build/ios/iphoneos
+          mkdir -p Payload
+          mv Runner.app Payload/
+          zip -qry "$GITHUB_WORKSPACE/Immich.ipa" Payload
+          ls -la "$GITHUB_WORKSPACE/Immich.ipa"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Immich.ipa
+          path: Immich.ipa
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/ipa-v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#ipa-v}"
+          gh release create "$GITHUB_REF_NAME" Immich.ipa \
+            --title "$GITHUB_REF_NAME" \
+            --notes "Immich $VERSION — unsigned build for SideStore."
+
+      # The SideStore source lives in Cory/sidestore on the Forgejo instance and
+      # rebuilds itself from this repo's public releases, so nothing is ever
+      # committed back here. This step only makes that rebuild happen sooner,
+      # and is optional by design: the source repo also runs on a schedule, so a
+      # release with no token here is picked up on its own, just later.
+      - name: Refresh the SideStore source
+        if: startsWith(github.ref, 'refs/tags/ipa-v')
+        env:
+          STORE_DISPATCH_TOKEN: ${{ secrets.STORE_DISPATCH_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${STORE_DISPATCH_TOKEN:-}" ]; then
+            echo "No STORE_DISPATCH_TOKEN set — the source repo will pick up $GITHUB_REF_NAME on its next scheduled run."
+            exit 0
+          fi
+          # The public address, not the in-cluster :3000 one the Forgejo jobs
+          # use: this runner is outside that docker network.
+          curl -fsS -X POST \
+            -H "Authorization: token $STORE_DISPATCH_TOKEN" \
+            -H "Content-Type: application/json" \
+            "https://git.lody.co/api/v1/repos/Cory/sidestore/actions/workflows/update.yml/dispatches" \
+            -d '{"ref":"main"}'
+          echo "Triggered Cory/sidestore update for $GITHUB_REF_NAME"
