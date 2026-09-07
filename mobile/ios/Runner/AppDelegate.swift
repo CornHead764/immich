@@ -30,6 +30,7 @@ import native_video_player
     LocalImageApiSetup.setUp(binaryMessenger: messenger, api: LocalImageApiImpl())
     RemoteImageApiSetup.setUp(binaryMessenger: messenger, api: RemoteImageApiImpl())
     BackgroundWorkerFgHostApiSetup.setUp(binaryMessenger: messenger, api: BackgroundWorkerApiImpl())
+    BackgroundWorkerLockApiSetup.setUp(binaryMessenger: messenger, api: BackgroundEngineLock())
     ConnectivityApiSetup.setUp(binaryMessenger: messenger, api: ConnectivityApiImpl())
     NetworkApiSetup.setUp(binaryMessenger: messenger, api: NetworkApiImpl())
   }

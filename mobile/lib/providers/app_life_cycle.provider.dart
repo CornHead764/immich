@@ -235,6 +235,11 @@ class AppLifeCycleNotifier extends StateNotifier<AppLifeCycleEnum> {
     }
 
     final backgroundWorker = _ref.read(backgroundWorkerFgServiceProvider);
+    final lock = _ref.read(backgroundWorkerLockServiceProvider);
+    // handleAppPause released the lock on the way in, so take it back for the
+    // duration: a worker starting now would upload the same assets from a second
+    // isolate and delete the exported files this run is still reading.
+    await lock.lock();
     await backgroundWorker.beginBackgroundTask();
     try {
       await _ref.read(backupProvider.notifier).startBackupWithURLSession(userId);
@@ -242,6 +247,7 @@ class AppLifeCycleNotifier extends StateNotifier<AppLifeCycleEnum> {
       _log.warning("Failed to hand off backup to the background URLSession", error, stackTrace);
     } finally {
       await backgroundWorker.endBackgroundTask();
+      await lock.unlock();
     }
   }
 

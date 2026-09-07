@@ -13,7 +13,6 @@ import 'package:immich_mobile/domain/services/local_sync.service.dart';
 import 'package:immich_mobile/domain/services/log.service.dart';
 import 'package:immich_mobile/domain/services/sync_stream.service.dart';
 import 'package:immich_mobile/entities/store.entity.dart';
-import 'package:immich_mobile/extensions/platform_extensions.dart';
 import 'package:immich_mobile/infrastructure/repositories/settings.repository.dart';
 import 'package:immich_mobile/platform/background_worker_api.g.dart';
 import 'package:immich_mobile/platform/background_worker_lock_api.g.dart';
@@ -378,17 +377,9 @@ class BackgroundWorkerLockService {
   final BackgroundWorkerLockApi _hostApi;
   const BackgroundWorkerLockService(this._hostApi);
 
-  Future<void> lock() async {
-    if (CurrentPlatform.isAndroid) {
-      return _hostApi.lock();
-    }
-  }
+  Future<void> lock() => _hostApi.lock();
 
-  Future<void> unlock() async {
-    if (CurrentPlatform.isAndroid) {
-      return _hostApi.unlock();
-    }
-  }
+  Future<void> unlock() => _hostApi.unlock();
 }
 
 /// Native entry invoked from the background worker. If renaming or moving this to a different
