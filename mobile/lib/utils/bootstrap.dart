@@ -9,6 +9,7 @@ import 'package:immich_mobile/infrastructure/repositories/log.repository.dart';
 import 'package:immich_mobile/infrastructure/repositories/network.repository.dart';
 import 'package:immich_mobile/infrastructure/repositories/settings.repository.dart';
 import 'package:immich_mobile/infrastructure/repositories/store.repository.dart';
+import 'package:immich_mobile/services/api.service.dart';
 import 'package:immich_mobile/utils/debug_print.dart';
 import 'package:logging/logging.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -59,6 +60,9 @@ abstract final class Bootstrap {
     final logDb = await _initLogger(settingsRepository: settingsRepo, shouldBufferLogs: shouldBufferLogs);
 
     await NetworkRepository.init();
+    // Both this and the background isolate reach the server on the shared
+    // cookie jar, so both need the cookie restored before their first request.
+    await ApiService.restoreAuthCookie();
     // Remove once all asset operations are migrated to Native APIs
     await PhotoManager.setIgnorePermissionCheck(true);
     return (drift, logDb);

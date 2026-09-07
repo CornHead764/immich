@@ -188,6 +188,23 @@ class ApiService {
     return urls;
   }
 
+  /// Puts the auth cookie back from the persisted access token.
+  ///
+  /// The cookie the server sets at login is the only credential these requests
+  /// carry, and it lives in the app group's cookie jar — which a sideloaded
+  /// build cannot count on keeping across launches, because the group container
+  /// depends on an entitlement the signer may not grant. The token outlives it
+  /// in the store, so restore the cookie during startup, before the auth guard
+  /// validates a token over a request that has no credential on it and logs the
+  /// user out.
+  static Future<void> restoreAuthCookie() async {
+    final token = Store.tryGet(StoreKey.accessToken);
+    if (token == null || token.isEmpty) {
+      return;
+    }
+    await NetworkRepository.setHeaders(getRequestHeaders(), getServerUrls(), token: token);
+  }
+
   static Map<String, String> getRequestHeaders() {
     return SettingsRepository.instance.appConfig.network.customHeaders;
   }
