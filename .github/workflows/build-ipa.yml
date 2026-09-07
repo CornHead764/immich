@@ -61,6 +61,23 @@ jobs:
       - name: Perform codegen
         run: mise //mobile:codegen
 
+      - name: Use identifiers this fork owns
+        # group.app.immich.share is registered to upstream's team, and App Group
+        # ids are globally unique, so no other account can ever be granted it.
+        # The app reads its group from the AppGroupId key baked into Info.plist,
+        # so the id has to be replaced at build time, not at signing time.
+        # ios/Signing.xcconfig includes this file last, and it is gitignored.
+        env:
+          BUNDLE_ID: ${{ vars.IMMICH_BUNDLE_ID_PROD || 'co.lody.immich' }}
+          GROUP_ID: ${{ vars.IMMICH_GROUP_ID || 'group.co.lody.immich' }}
+        run: |
+          set -euo pipefail
+          {
+            echo "IMMICH_BUNDLE_ID_PROD = $BUNDLE_ID"
+            echo "IMMICH_GROUP_ID = $GROUP_ID"
+          } > mobile/ios/Signing.local.xcconfig
+          echo "Building as $BUNDLE_ID in $GROUP_ID"
+
       - name: Build unsigned app
         working-directory: ./mobile
         # SideStore signs the app with the user's own certificate on install, so
@@ -68,6 +85,62 @@ jobs:
         # profiles for the app or its extensions, blank IMMICH_TEAM_ID by
         # writing ios/Signing.local.xcconfig before this step.
         run: flutter build ios --release --no-codesign
+
+      - name: Embed entitlements
+        # --no-codesign leaves the app with no signature, and therefore no
+        # entitlements blob at all. A re-signer reads entitlements out of the
+        # binary it is given, so without this the installed app is granted none
+        # of them: no shared container, which kills the widget, the share
+        # extension, and the login cookie that lives in the group's cookie jar.
+        # An ad-hoc signature is not honoured by iOS itself; it exists purely so
+        # the entitlements survive as far as SideStore.
+        env:
+          GROUP_ID: ${{ vars.IMMICH_GROUP_ID || 'group.co.lody.immich' }}
+        run: |
+          set -euo pipefail
+          APP=$(find mobile/build/ios/iphoneos -maxdepth 1 -name '*.app' | head -1)
+
+          # The checked-in entitlements reference $(CUSTOM_GROUP_ID), which only
+          # Xcode expands, and only when it is signing. Expand it here so these
+          # files stay the single source of truth for what the app asks for.
+          # applinks is dropped: my.immich.app belongs to upstream, and asking
+          # for a domain the signing account cannot claim risks the whole
+          # provisioning step rather than just losing universal links.
+          expand() {
+            python3 - "$1" "$2" "$GROUP_ID" <<'PY'
+          import re, sys
+          src, dst, group = sys.argv[1], sys.argv[2], sys.argv[3]
+          x = open(src).read().replace('$(CUSTOM_GROUP_ID)', group)
+          x = re.sub(r'\s*<key>com\.apple\.developer\.associated-domains</key>\s*<array>.*?</array>',
+                     '', x, flags=re.S)
+          open(dst, 'w').write(x)
+          PY
+          }
+          expand mobile/ios/Runner/Runner.entitlements app.entitlements
+          expand mobile/ios/ShareExtension/ShareExtension.entitlements share.entitlements
+          expand mobile/ios/WidgetExtension/WidgetExtension.entitlements widget.entitlements
+
+          # Deepest first: signing a bundle requires the code nested in it to
+          # already carry a signature of its own.
+          find "$APP/Frameworks" -name '*.framework' -maxdepth 1 -exec codesign --force --sign - {} +
+          codesign --force --sign - --entitlements share.entitlements "$APP/PlugIns/ShareExtension.appex"
+          codesign --force --sign - --entitlements widget.entitlements "$APP/PlugIns/WidgetExtension.appex"
+          codesign --force --sign - --entitlements app.entitlements "$APP"
+
+          # Silently losing an entitlement produces an app that installs, runs,
+          # and quietly cannot keep you logged in, so prove it landed instead of
+          # trusting that codesign did what it was asked.
+          for target in "$APP/Immich" "$APP/PlugIns/ShareExtension.appex/ShareExtension" "$APP/PlugIns/WidgetExtension.appex/WidgetExtension"; do
+            # Asking codesign is authoritative; grepping the binary is the
+            # fallback, since the blob is embedded as plain XML either way and
+            # the exact codesign flags vary between toolchains.
+            if ! codesign -d --entitlements - "$(dirname "$target")" 2>/dev/null | grep -q "$GROUP_ID" \
+               && ! grep -aq "$GROUP_ID" "$target"; then
+              echo "error: $target carries no $GROUP_ID app-group entitlement." >&2
+              exit 1
+            fi
+          done
+          echo "All three targets carry the $GROUP_ID app group."
 
       - name: Package IPA
         # An IPA is just a zip with the .app under Payload/. `flutter build ipa`
