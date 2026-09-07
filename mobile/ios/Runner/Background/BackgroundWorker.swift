@@ -1,8 +1,6 @@
 import BackgroundTasks
 import Flutter
 
-enum BackgroundTaskType { case refresh, processing }
-
 /*
  * DEBUG: Testing Background Tasks in Xcode
  * 
@@ -38,7 +36,7 @@ enum BackgroundTaskType { case refresh, processing }
 /// This class manages a separate Flutter engine instance for background execution,
 /// independent of the main UI Flutter engine.
 class BackgroundWorker: BackgroundWorkerBgHostApi {
-  private let taskType: BackgroundTaskType
+  private let taskType: IosUploadTrigger
   /// The maximum number of seconds to run the task before timing out
   private let maxSeconds: Int?
   /// Callback function to invoke when the background task completes
@@ -62,11 +60,11 @@ class BackgroundWorker: BackgroundWorkerBgHostApi {
    * communication channels between native iOS and Flutter code.
    *
    * - Parameters:
-   *   - taskType: The type of background task to execute (upload or sync task)
+   *   - taskType: What asked for this run, which decides how the Dart side orders its phases
    *   - maxSeconds: Optional maximum execution time in seconds before the task is cancelled
    *   - completionHandler: Callback function invoked when the task completes, with success status
    */
-  init(taskType: BackgroundTaskType, maxSeconds: Int?, completionHandler: @escaping (_ success: Bool) -> Void) {
+  init(taskType: IosUploadTrigger, maxSeconds: Int?, completionHandler: @escaping (_ success: Bool) -> Void) {
     self.taskType = taskType
     self.maxSeconds = maxSeconds
     self.completionHandler = completionHandler
@@ -114,7 +112,7 @@ class BackgroundWorker: BackgroundWorkerBgHostApi {
    * This method acts as a bridge between the native iOS background task system and Flutter.
    */
   func onInitialized() throws {
-    flutterApi?.onIosUpload(isRefresh: self.taskType == .refresh, maxSeconds: maxSeconds.map { Int64($0) }, completion: { result in
+    flutterApi?.onIosUpload(trigger: self.taskType, maxSeconds: maxSeconds.map { Int64($0) }, completion: { result in
       self.handleHostResult(result: result)
     })
   }

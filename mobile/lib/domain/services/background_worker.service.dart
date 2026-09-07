@@ -155,8 +155,26 @@ class BackgroundWorkerBgService extends BackgroundWorkerFlutterApi {
   }
 
   @override
-  Future<void> onIosUpload(bool isRefresh, int? maxSeconds) async {
-    _logger.info('iOS background upload started with maxSeconds: ${maxSeconds}s');
+  Future<void> onIosUpload(IosUploadTrigger trigger, int? maxSeconds) async {
+    _logger.info('iOS $trigger upload started with maxSeconds: ${maxSeconds}s');
+
+    if (trigger == IosUploadTrigger.userInitiated) {
+      // The user ran this because they just took a photo, so the run has to find
+      // it. The concurrent path below cannot: its candidate query reads the
+      // database milliseconds after the local sync that discovers the photo has
+      // started, and an asset with no checksum yet is not a candidate at all.
+      final budget = Duration(seconds: maxSeconds ?? 25);
+      return _backgroundLoop(
+        // Hashing a freshly shot video can outlast the whole budget, so leave
+        // the tail of it for enqueuing. A hash cut short is resumed by the next
+        // run rather than lost.
+        hashTimeout: budget * 0.6,
+        backupTimeout: budget,
+        debugLabel: 'iOS user-initiated upload',
+        requireRemoteSync: false,
+      );
+    }
+
     final sw = Stopwatch()..start();
     try {
       final budget = maxSeconds != null ? Duration(seconds: maxSeconds - 1) : null;
@@ -205,13 +223,18 @@ class BackgroundWorkerBgService extends BackgroundWorkerFlutterApi {
     required Duration hashTimeout,
     required Duration? backupTimeout,
     required String debugLabel,
+    // A run the user asked for uploads even if the remote sync failed. The
+    // server dedups on checksum, so a stale view of what it already has costs a
+    // rejected request, not a duplicate asset — where skipping costs the upload
+    // they were waiting for.
+    bool requireRemoteSync = true,
   }) async {
     _logger.info(
       '$debugLabel started hashTimeout: ${hashTimeout.inSeconds}s, backupTimeout: ${backupTimeout?.inMinutes ?? '~'}m',
     );
     final sw = Stopwatch()..start();
     try {
-      if (!await _syncAssets(hashTimeout: hashTimeout)) {
+      if (!await _syncAssets(hashTimeout: hashTimeout) && requireRemoteSync) {
         _logger.warning("Remote sync did not complete successfully, skipping backup");
         return;
       }

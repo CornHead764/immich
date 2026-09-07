@@ -18,6 +18,13 @@ class BackgroundWorkerSettings {
   const BackgroundWorkerSettings({required this.requiresCharging, required this.minimumDelaySeconds});
 }
 
+/// What asked for an iOS upload run.
+///
+/// The OS-scheduled tasks tolerate reading slightly stale state, but a run the
+/// user asked for has to see the photo they just took, which means syncing and
+/// hashing before looking for candidates.
+enum IosUploadTrigger { refresh, processing, userInitiated }
+
 @HostApi()
 abstract class BackgroundWorkerFgHostApi {
   void enable();
@@ -50,7 +57,7 @@ abstract class BackgroundWorkerBgHostApi {
 abstract class BackgroundWorkerFlutterApi {
   // iOS Only: Called when the iOS background upload is triggered
   @async
-  void onIosUpload(bool isRefresh, int? maxSeconds);
+  void onIosUpload(IosUploadTrigger trigger, int? maxSeconds);
 
   // Android Only: Called when the Android background upload is triggered
   @async

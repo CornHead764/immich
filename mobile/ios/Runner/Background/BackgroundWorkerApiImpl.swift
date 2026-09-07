@@ -54,7 +54,7 @@ class BackgroundWorkerApiImpl: BackgroundWorkerFgHostApi {
     defer { taskSemaphore.signal() }
 
     await withCheckedContinuation { continuation in
-      intentWorker = BackgroundWorker(taskType: .refresh, maxSeconds: 25) { _ in
+      intentWorker = BackgroundWorker(taskType: .userInitiated, maxSeconds: 25) { _ in
         intentWorker = nil
         continuation.resume()
       }
@@ -127,10 +127,10 @@ class BackgroundWorkerApiImpl: BackgroundWorkerFgHostApi {
    *
    * - Parameters:
    *   - task: The iOS background task that provides the execution context
-   *   - taskType: The type of background operation to perform (refresh or processing)
+   *   - taskType: What asked for this run
    *   - maxSeconds: Optional timeout for the operation in seconds
    */
-  private static func runBackgroundWorker(task: BGTask, taskType: BackgroundTaskType, maxSeconds: Int?) {
+  private static func runBackgroundWorker(task: BGTask, taskType: IosUploadTrigger, maxSeconds: Int?) {
     defer { taskSemaphore.signal() }
     let semaphore = DispatchSemaphore(value: 0)
     var isSuccess = true
